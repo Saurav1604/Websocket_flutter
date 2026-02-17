@@ -1,0 +1,105 @@
+import 'package:flutter/material.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'dart:async';
+
+void main() {
+  runApp(const MyApp());
+}
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: const WebSocketScreen(),
+    );
+  }
+}
+class WebSocketScreen extends StatefulWidget {
+  const WebSocketScreen({super.key});
+
+  @override
+  // ignore: library_private_types_in_public_api
+  _WebSocketScreenState createState() => _WebSocketScreenState();
+}
+class _WebSocketScreenState extends State<WebSocketScreen> {
+  final TextEditingController _controller = TextEditingController();
+  late WebSocketChannel _channel;
+  late StreamSubscription _subscription;
+  String receivedMessage = "";
+  String errorMessage = "";
+  @override
+  void initState() {
+    super.initState();
+    try {
+      _channel = WebSocketChannel.connect(
+        Uri.parse('wss://echo.websocket.org'),
+      );
+      _subscription = _channel.stream.listen(
+        (message) {
+          setState(() {
+            receivedMessage = message;
+            errorMessage = "";
+          });
+        },
+        onError: (error) {
+          setState(() {
+            errorMessage = 'Error: $error';
+          });
+        },
+        onDone: () {
+          setState(() {
+            errorMessage = 'Connection closed';
+          });
+        },
+      );
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Failed to connect: $e';
+      });
+    }
+  }
+  void _sendMessage() {
+    if (_controller.text.isNotEmpty) {
+      _channel.sink.add(_controller.text);
+    }
+  }
+  @override
+  void dispose() {
+    _subscription.cancel();
+    _channel.sink.close();
+    _controller.dispose();
+    super.dispose();
+  }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Flutter WebSocket Demo')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _controller,
+              decoration: const InputDecoration(labelText: 'Enter message'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _sendMessage,
+              child: const Text('Send Message'),
+            ),
+            const SizedBox(height: 20),
+            if (errorMessage.isNotEmpty)
+              Text(
+                errorMessage,
+                style: const TextStyle(color: Colors.red),
+              ),
+            if (receivedMessage.isNotEmpty)
+              Text('Received: $receivedMessage'),
+          ],
+        ),
+      ),
+    );
+  }
+}
