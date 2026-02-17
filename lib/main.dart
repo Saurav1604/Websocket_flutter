@@ -1,12 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'dart:developer';
 
-// STEP 1: Start the app
+import 'package:flutter/material.dart';
+
 void main() {
   runApp(const MyApp());
 }
 
-// STEP 2: Create the main app widget
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -14,160 +13,135 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Simple WebSocket Demo',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const WebSocketDemo(),
+      title: 'Chatting App',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+      ),
+      home: const MyHomePage(title: 'Home'),
     );
   }
 }
 
-// STEP 3: Create the WebSocket demo page
-class WebSocketDemo extends StatefulWidget {
-  const WebSocketDemo({super.key});
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key, required this.title});
+
+  final String title;
 
   @override
-  State<WebSocketDemo> createState() => _WebSocketDemoState();
+  State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _WebSocketDemoState extends State<WebSocketDemo> {
-  // Variables we need:
-  final TextEditingController _messageController = TextEditingController();
-  final List<String> _messages = []; // Store all messages
-  late WebSocketChannel _channel; // WebSocket connection
+class _MyHomePageState extends State<MyHomePage> {
 
-  @override
-  void initState() {
-    super.initState();
-    _connectToWebSocket();
-  }
+  final TextEditingController one = TextEditingController();
 
-  // STEP 4: Connect to WebSocket server
-  void _connectToWebSocket() {
-    // Using a free public echo server for testing
-    _channel = WebSocketChannel.connect(
-      Uri.parse('wss://echo.websocket.events'),
-    );
-
-    // STEP 5: Listen for messages from server
-    _channel.stream.listen((message) {
-      setState(() {
-        _messages.add('Received: $message');
-      });
-    });
-  }
-
-  // STEP 6: Send message to server
+  // User-defined TextField dimensions
+  static const double textFieldWidth = 300.0;  // Customize width here
+  static const double textFieldHeight = 60.0;  // Customize height here
+  static const int maxLines = 1;  // Number of lines
+  static const int maxCharacters = 100;  // Maximum character length
+  late String receivedMessage = "";
+  late String message = "no message yet";
   void _sendMessage() {
-    if (_messageController.text.isNotEmpty) {
-      String message = _messageController.text;
-      _channel.sink.add(message); // Send to server
-
-      setState(() {
-        _messages.add('Sent: $message');
-      });
-
-      _messageController.clear(); // Clear input field
-    }
+    if (one.text.isEmpty) return;  // Guard clause
+    setState(() {
+      message = one.text;
+      receivedMessage += (receivedMessage.isEmpty ? '' : '\n') + message;
+    });
+    log('Message sent: $message');
+    one.clear();
   }
-
-  @override
-  void dispose() {
-    _channel.sink.close(); // Close connection when done
-    _messageController.dispose();
-    super.dispose();
-  }
-
-  // STEP 7: Build the UI
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('WebSocket Demo'), centerTitle: true),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Info Card
-            Card(
-              color: Colors.blue[50],
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Text(
-                  'This app demonstrates real-time communication using WebSocket.\n'
-                  'Type a message and it will be sent to the server, which echoes it back!',
-                  style: TextStyle(color: Colors.blue[900]),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            
+          ),
+          child: Text(widget.title),
+        ), 
+      ),
 
-            // Messages Display Area
+
+      body: Center(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            // Left half - Text
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: _messages.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No messages yet. Send one below!',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          bool isSent = _messages[index].startsWith('Sent:');
-                          return Container(
-                            padding: const EdgeInsets.all(8.0),
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSent
-                                  ? Colors.blue[100]
-                                  : Colors.green[100],
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _messages[index],
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                          );
-                        },
+              flex: 1,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Enter message:',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration:BoxDecoration(
+                        border :Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(4)
                       ),
+                      child: Text(
+                        '-----Message History-----\n\n${receivedMessage.isEmpty? 'No messages' : receivedMessage}',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Input Area
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: const InputDecoration(
-                      labelText: 'Enter message',
-                      border: OutlineInputBorder(),
+            // Right half - TextField
+            Expanded(
+              flex: 1,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: textFieldWidth,  // User-defined width
+                      height: textFieldHeight,  // User-defined height
+                      child: TextField(
+                        controller: one,
+                        maxLength: maxCharacters,
+                        maxLines: maxLines,  // Control vertical size
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Type here',
+                          counterText: '',  // Hide character counter to save space
+                        ),
+                      ),
                     ),
-                    onSubmitted: (_) => _sendMessage(),
-                  ),
+                    ElevatedButton(
+                      onPressed: _sendMessage,
+                      child: const Text('Send'),
+                      ),
+                      Text("Received message : $message"),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _sendMessage,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.all(16),
-                  ),
-                  child: const Icon(Icons.send),
-                ),
-              ],
+                
+              ),
             ),
           ],
         ),
       ),
+      //floatingActionButton: FloatingActionButton(
+        //onPressed: _incrementCounter,
+        //tooltip: 'Increment',
+        //child: const Icon(Icons.add),
+      //),
     );
+  }
+  @override
+  void dispose() {
+    one.dispose();
+    super.dispose();
   }
 }
